@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const pool = require("./config/db");
 const { getAIResponse } = require("./services/aiService");
 
 const app = express();
@@ -26,6 +27,33 @@ app.get("/api/health", (req, res) => {
     status: "ok",
     message: "Server is running",
   });
+});
+
+app.get("/api/dashboard", async (req, res) => {
+  try {
+    const tablesResult = await pool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+
+    const tables = tablesResult.rows.map((row) => row.table_name);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalTables: tables.length,
+        tables,
+      },
+    });
+  } catch (error) {
+    console.error("Dashboard route error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to load dashboard data",
+    });
+  }
 });
 
 app.post("/api/ask-ai", async (req, res) => {

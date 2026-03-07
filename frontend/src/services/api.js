@@ -1,5 +1,4 @@
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 export async function askAI(question) {
   try {
@@ -11,8 +10,7 @@ export async function askAI(question) {
       body: JSON.stringify({ question }),
     });
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error("API error:", error);
     return {

@@ -20,21 +20,26 @@ function App() {
   useEffect(() => {
     async function loadDashboard() {
       const data = await getDashboardData();
+      console.log("Dashboard response:", data);
+
       if (data.success) {
         setDashboard(data.stats);
       }
     }
+
     loadDashboard();
   }, []);
 
   const handleAsk = async (customQuestion) => {
     const finalQuestion = customQuestion || question;
+
     if (!finalQuestion.trim()) return;
 
     setLoading(true);
     setAnswer("");
 
     const res = await askAI(finalQuestion);
+    console.log("AI response:", res);
 
     if (res.success) {
       setAnswer(res.answer);
@@ -113,7 +118,9 @@ function App() {
                 Hello Raja, your restaurant AI is connected.
               </div>
 
-              {question && <div className="message user-message">{question}</div>}
+              {question && (
+                <div className="message user-message">{question}</div>
+              )}
 
               {loading && (
                 <div className="message ai-message">Loading answer...</div>
