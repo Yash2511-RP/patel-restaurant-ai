@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export default function App() {
   const cards = [
     { title: "Today's Sales", value: "$4,860", sub: "+8.2% vs yesterday" },
@@ -20,6 +22,60 @@ export default function App() {
     "Staff Scheduling",
     "Vendors",
   ];
+
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState([
+    { role: "user", text: "What items are selling best this week?" },
+    {
+      role: "ai",
+      text: "Your best-selling item this week is Paneer Pizza. Garlic Bread and Masala Fries are also performing strongly.",
+    },
+    { role: "user", text: "Any inventory issue today?" },
+    {
+      role: "ai",
+      text: "Yes. Cheese stock is lower than expected based on current sales pace. Suggested action: place a vendor order today.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+
+  const askAI = async () => {
+    if (!question.trim()) return;
+
+    const userMessage = { role: "user", text: question };
+    setMessages((prev) => [...prev, userMessage]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("http://localhost:4000/api/ask-ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question }),
+      });
+
+      const data = await res.json();
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: data.answer || "No answer received." },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: "Backend connection failed. Please check server." },
+      ]);
+    }
+
+    setQuestion("");
+    setLoading(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      askAI();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -53,32 +109,47 @@ export default function App() {
                 <h3 className="text-xl font-semibold">AI Assistant</h3>
                 <p className="text-sm text-slate-500">Ask about sales, inventory, payroll, and staffing</p>
               </div>
-              <button className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+              <button
+                onClick={() => setMessages([])}
+                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+              >
                 New Chat
               </button>
             </div>
 
             <div className="space-y-4 rounded-3xl bg-slate-50 p-4">
-              <div className="ml-auto max-w-xl rounded-3xl bg-slate-900 px-4 py-3 text-sm text-white shadow">
-                What items are selling best this week?
-              </div>
-              <div className="max-w-2xl rounded-3xl bg-white px-4 py-3 text-sm text-slate-700 shadow ring-1 ring-slate-200">
-                Your best-selling item this week is <span className="font-semibold">Paneer Pizza</span>. Garlic Bread and Masala Fries are also performing strongly. Dinner hours between 6 PM and 9 PM show the highest sales volume.
-              </div>
-              <div className="ml-auto max-w-xl rounded-3xl bg-slate-900 px-4 py-3 text-sm text-white shadow">
-                Any inventory issue today?
-              </div>
-              <div className="max-w-2xl rounded-3xl bg-white px-4 py-3 text-sm text-slate-700 shadow ring-1 ring-slate-200">
-                Yes. Cheese stock is lower than expected based on current sales pace. Suggested action: place a vendor order today to avoid shortage tomorrow night.
-              </div>
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={
+                    msg.role === "user"
+                      ? "ml-auto max-w-xl rounded-3xl bg-slate-900 px-4 py-3 text-sm text-white shadow"
+                      : "max-w-2xl rounded-3xl bg-white px-4 py-3 text-sm text-slate-700 shadow ring-1 ring-slate-200"
+                  }
+                >
+                  {msg.text}
+                </div>
+              ))}
+
+              {loading && (
+                <div className="max-w-2xl rounded-3xl bg-white px-4 py-3 text-sm text-slate-700 shadow ring-1 ring-slate-200">
+                  AI is thinking...
+                </div>
+              )}
             </div>
 
             <div className="mt-4 flex gap-3">
               <input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-900"
                 placeholder="Ask AI about restaurant operations..."
               />
-              <button className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white">
+              <button
+                onClick={askAI}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+              >
                 Send
               </button>
             </div>

@@ -16,11 +16,15 @@ app.post("/api/ask-ai", (req, res) => {
   let answer = "AI is still learning.";
 
   if (question && question.toLowerCase().includes("sales")) {
-    answer = "Today's sales look strong. Paneer Pizza is the top-selling item.";
+    answer = "Today's sales are strong. Paneer Pizza is the top-selling item.";
   }
 
   if (question && question.toLowerCase().includes("inventory")) {
     answer = "Cheese stock is running low. You should place a vendor order.";
+  }
+
+  if (question && question.toLowerCase().includes("staff")) {
+    answer = "You currently have 12 staff on shift.";
   }
 
   res.json({ answer });
