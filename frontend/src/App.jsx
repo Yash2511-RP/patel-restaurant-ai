@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function App() {
+  const API_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:4000/api/ask-ai";
+
   const cards = [
     { title: "Today's Sales", value: "$4,860", sub: "+8.2% vs yesterday" },
     { title: "Low Stock Items", value: "7", sub: "Cheese, Fries, Bread, Sauces" },
@@ -23,35 +26,43 @@ export default function App() {
     "Vendors",
   ];
 
+  const quickQuestions = [
+    "sales",
+    "top selling item",
+    "employees",
+    "inventory",
+  ];
+
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([
-    { role: "user", text: "What items are selling best this week?" },
     {
       role: "ai",
-      text: "Your best-selling item this week is Paneer Pizza. Garlic Bread and Masala Fries are also performing strongly.",
-    },
-    { role: "user", text: "Any inventory issue today?" },
-    {
-      role: "ai",
-      text: "Yes. Cheese stock is lower than expected based on current sales pace. Suggested action: place a vendor order today.",
+      text: "Hello Raja, I’m ready to help with sales, inventory, employees, and restaurant insights.",
     },
   ]);
   const [loading, setLoading] = useState(false);
 
-  const askAI = async () => {
-    if (!question.trim()) return;
+  const stats = useMemo(() => {
+    const userCount = messages.filter((msg) => msg.role === "user").length;
+    const aiCount = messages.filter((msg) => msg.role === "ai").length;
+    return { userCount, aiCount };
+  }, [messages]);
 
-    const userMessage = { role: "user", text: question };
+  const askAI = async (customQuestion) => {
+    const finalQuestion = (customQuestion ?? question).trim();
+    if (!finalQuestion || loading) return;
+
+    const userMessage = { role: "user", text: finalQuestion };
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:4000/api/ask-ai", {
+      const res = await fetch(API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: finalQuestion }),
       });
 
       const data = await res.json();
@@ -63,18 +74,31 @@ export default function App() {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: "Backend connection failed. Please check server." },
+        {
+          role: "ai",
+          text: "Backend connection failed. Please check your API server or deployed backend URL.",
+        },
       ]);
+    } finally {
+      setQuestion("");
+      setLoading(false);
     }
-
-    setQuestion("");
-    setLoading(false);
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       askAI();
     }
+  };
+
+  const clearChat = () => {
+    setMessages([
+      {
+        role: "ai",
+        text: "New chat started. Ask me about sales, top items, employees, or inventory.",
+      },
+    ]);
+    setQuestion("");
   };
 
   return (
@@ -94,7 +118,10 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cards.map((card) => (
-            <div key={card.title} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div
+              key={card.title}
+              className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+            >
               <p className="text-sm text-slate-500">{card.title}</p>
               <h2 className="mt-2 text-3xl font-bold">{card.value}</h2>
               <p className="mt-2 text-sm text-emerald-600">{card.sub}</p>
@@ -104,20 +131,34 @@ export default function App() {
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 lg:col-span-2">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-semibold">AI Assistant</h3>
-                <p className="text-sm text-slate-500">Ask about sales, inventory, payroll, and staffing</p>
+                <p className="text-sm text-slate-500">
+                  Ask about sales, inventory, payroll, employees, and restaurant insights
+                </p>
               </div>
               <button
-                onClick={() => setMessages([])}
+                onClick={clearChat}
                 className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
               >
                 New Chat
               </button>
             </div>
 
-            <div className="space-y-4 rounded-3xl bg-slate-50 p-4">
+            <div className="mb-4 flex flex-wrap gap-2">
+              {quickQuestions.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => askAI(item)}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div className="max-h-[420px] space-y-4 overflow-y-auto rounded-3xl bg-slate-50 p-4">
               {messages.map((msg, index) => (
                 <div
                   key={index}
@@ -147,8 +188,9 @@ export default function App() {
                 placeholder="Ask AI about restaurant operations..."
               />
               <button
-                onClick={askAI}
-                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+                onClick={() => askAI()}
+                disabled={loading}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-60"
               >
                 Send
               </button>
@@ -160,7 +202,10 @@ export default function App() {
               <h3 className="text-xl font-semibold">AI Insights</h3>
               <div className="mt-4 space-y-3">
                 {insights.map((item) => (
-                  <div key={item} className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200">
+                  <div
+                    key={item}
+                    className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200"
+                  >
                     {item}
                   </div>
                 ))}
@@ -171,10 +216,28 @@ export default function App() {
               <h3 className="text-xl font-semibold">Modules</h3>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {modules.map((module) => (
-                  <div key={module} className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-medium text-slate-700 ring-1 ring-slate-200">
+                  <div
+                    key={module}
+                    className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-medium text-slate-700 ring-1 ring-slate-200"
+                  >
                     {module}
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h3 className="text-xl font-semibold">Chat Summary</h3>
+              <div className="mt-4 space-y-3 text-sm text-slate-700">
+                <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                  User messages: <span className="font-semibold">{stats.userCount}</span>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                  AI replies: <span className="font-semibold">{stats.aiCount}</span>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                  API URL: <span className="break-all font-semibold">{API_URL}</span>
+                </div>
               </div>
             </div>
           </div>
