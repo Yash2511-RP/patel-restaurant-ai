@@ -1,39 +1,66 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const { getAIResponse } = require("./services/aiService");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Patel Restaurant AI Backend Running");
+  res.status(200).send("Patel Restaurant AI Backend Running");
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.status(200).json({
+    status: "ok",
+    message: "Server is running",
+  });
 });
 
 app.post("/api/ask-ai", async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question } = req.body || {};
 
-    if (!question) {
-      return res.status(400).json({ error: "Question required" });
+    if (!question || !question.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Question is required",
+      });
     }
 
-    const answer = await getAIResponse(question);
+    const answer = await getAIResponse(question.trim());
 
-    res.json({ answer });
-
+    return res.status(200).json({
+      success: true,
+      answer,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "AI error" });
+    console.error("AI route error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "AI error",
+    });
   }
 });
 
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: "Route not found",
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
