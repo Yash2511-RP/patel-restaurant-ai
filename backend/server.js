@@ -29,14 +29,20 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/debug-db", (req, res) => {
+  res.status(200).json({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME,
+  });
+});
+
 app.get("/api/dashboard", async (req, res) => {
   try {
-    const tablesResult = await pool.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-      ORDER BY table_name
-    `);
+    const tablesResult = await pool.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+    );
 
     const tables = tablesResult.rows.map((row) => row.table_name);
 
@@ -51,7 +57,7 @@ app.get("/api/dashboard", async (req, res) => {
     console.error("Dashboard route error:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to load dashboard data",
+      error: error.message || "Failed to load dashboard data",
     });
   }
 });
